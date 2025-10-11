@@ -2,11 +2,11 @@ import React, { useState, useEffect } from "react";
 import { useHealthContext } from "../Context/HealthContext";
 import assets from "../assets/assets";
 import Navbar from "../Components/Navbar";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom"; // ✅ 1. Import useNavigate
 
 const Signin = () => {
-  const { Dark } = useHealthContext();
-  const navigate = useNavigate();
+  const { Dark } = useHealthContext(); // ✅ 2. Removed 'navigate' from here
+  const navigate = useNavigate(); // ✅ 3. Get the navigate function directly
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -16,27 +16,26 @@ const Signin = () => {
   }, [Dark]);
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  try {
-    const response = await fetch("http://localhost:8080/api/auth/signin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+    e.preventDefault();
+    try {
+      const response = await fetch("http://localhost:8080/api/auth/signin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (!response.ok) throw new Error("Login failed");
+      if (!response.ok) throw new Error("Login failed");
 
-    const data = await response.json();
-    localStorage.setItem("token", data.token);
-    console.log("User:", data.user);
+      const data = await response.json();
+      localStorage.setItem("token", data.token);
+      console.log("User:", data.user);
 
-    navigate("/dashboard");
-  } catch (err) {
-    console.error(err);
-    alert("Invalid credentials!");
-  }
-};
-
+      navigate("/dashboard");
+    } catch (err) {
+      console.error(err);
+      alert("Invalid credentials!");
+    }
+  };
 
   return (
     <div
