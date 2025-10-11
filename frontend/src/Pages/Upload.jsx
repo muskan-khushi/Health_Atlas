@@ -73,7 +73,7 @@ const Upload = () => {
     formData.append("file", selectedFile);
 
     try {
-      const response = await fetch("https://health-atlas-backend.onrender.com/validate-file", {
+      const response = await fetch(`${API_URL}/validate-file`,  {
         method: "POST",
         body: formData,
       });

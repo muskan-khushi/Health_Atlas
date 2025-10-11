@@ -11,9 +11,16 @@ from tools import parse_provider_pdf
 
 app = FastAPI(title="Health Atlas Provider Validator")
 
+# ✅ THIS IS THE CRITICAL CHANGE FOR DEPLOYMENT
+# This is your new "VIP List"
+origins = [
+    "https://health-atlas-5fpw.vercel.app",  # Your deployed Vercel frontend URL
+    "http://localhost:5173",                 # The default address for local frontend testing
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins, # Use the specific VIP list
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,7 +46,6 @@ async def validate_file(file: UploadFile = File(...)):
                 df = pd.read_csv(temp_filename, dtype=str).fillna("")
                 provider_list = df.to_dict(orient='records')
             
-            # (PDF logic remains the same)
             elif file.filename.endswith('.pdf'):
                 yield f"data: {json.dumps({'type': 'log', 'content': 'Parsing PDF file...'})}\n\n"
                 extracted_text = parse_provider_pdf(temp_filename)
@@ -70,14 +76,11 @@ async def validate_file(file: UploadFile = File(...)):
                 yield f"data: {json.dumps(result_payload)}\n\n"
 
         finally:
-            # ✅ FIX: This 'finally' block GUARANTEES this code will run at the end.
             print("--- Processing finished. Cleaning up and sending close signal. ---")
             
-            # Clean up the temporary file
             if os.path.exists(temp_filename):
                 os.remove(temp_filename)
             
-            # Send the final "close" message to the frontend
             yield f"data: {json.dumps({'type': 'close', 'content': 'Processing complete.'})}\n\n"
 
     return StreamingResponse(file_processor_stream(), media_type="text/event-stream")
