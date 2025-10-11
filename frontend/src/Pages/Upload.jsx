@@ -3,6 +3,9 @@ import Sidebar from "../Components/Sidebar";
 import Navbar_III from "../Components/Navbar_III";
 import { useHealthContext } from "../Context/HealthContext";
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+
 // --- SVG Icons ---
 const FiUploadCloud = ({ Dark }) => (
   <svg
