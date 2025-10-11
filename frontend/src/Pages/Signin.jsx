@@ -15,11 +15,28 @@ const Signin = () => {
     else document.documentElement.classList.remove("dark");
   }, [Dark]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("Email:", email, "Password:", password);
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const response = await fetch("http://localhost:8080/api/auth/signin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!response.ok) throw new Error("Login failed");
+
+    const data = await response.json();
+    localStorage.setItem("token", data.token);
+    console.log("User:", data.user);
+
     navigate("/dashboard");
-  };
+  } catch (err) {
+    console.error(err);
+    alert("Invalid credentials!");
+  }
+};
+
 
   return (
     <div

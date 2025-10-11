@@ -22,14 +22,38 @@ const SignUp = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (formData.password !== formData.confirmPassword) {
       alert("Passwords do not match!");
       return;
     }
-    console.log("Form Data:", formData);
-    navigate("/login");
+
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:8080/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.message || "Signup failed");
+
+      alert(data.message || "Signup successful! Please login.");
+      navigate("/login");
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Error signing up");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -77,7 +101,7 @@ const SignUp = () => {
               type="submit"
               className="bg-blue-800 text-white py-3 rounded-xl font-semibold hover:bg-blue-900 transition"
             >
-              Sign Up
+              {loading ? "Signing Up..." : "Sign Up"}
             </button>
           </form>
 
