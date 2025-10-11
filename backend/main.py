@@ -14,7 +14,7 @@ app = FastAPI(title="Health Atlas Provider Validator")
 # ✅ THIS IS THE CRITICAL CHANGE FOR DEPLOYMENT
 # This is your new "VIP List"
 origins = [
-    "https://health-atlas-5fpw.vercel.app",  # Your deployed Vercel frontend URL
+    "https://health-atlas-git-main-muskans-projects-fcc4bff5.vercel.app/",  # Your deployed Vercel frontend URL
     "http://localhost:5173",                 # The default address for local frontend testing
 ]
 
