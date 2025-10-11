@@ -20,7 +20,7 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, # Use the specific VIP list
+    allow_origins=["*"], # Use the specific VIP list
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
