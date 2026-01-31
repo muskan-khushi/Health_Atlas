@@ -9,6 +9,8 @@ import Provider from "./Pages/Provider";
 import ProviderDetail from "./Pages/ProviderDetail";
 import Apply from "./Pages/Apply";
 import ProtectedRoute from "./Components/ProtectedRoute";
+import Analytics from './Pages/Analytics';
+
 
 const App = () => {
   useEffect(() => {
@@ -46,6 +48,8 @@ const App = () => {
         <Route path="/provider" element={<Provider />} />
         <Route path="/provider-detail" element={<ProviderDetail />} />
         <Route path="/new-user" element={<Apply />} />
+        <Route path="/analytics" element={<Analytics />} />
+
       </Routes>
     </div>
   );
