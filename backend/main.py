@@ -12,7 +12,13 @@ from datetime import datetime
 import shutil
 from pathlib import Path
 import psycopg2
+import uuid
+import asyncio
+from asyncio import Queue
+
 from psycopg2.extras import RealDictCursor
+
+
 
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -174,15 +180,33 @@ def format_result_for_frontend(final_result: Dict[str, Any], provider_info: Dict
 @app.post("/validate-file")
 async def validate_file(file: UploadFile = File(...)):
     """Enhanced API endpoint with parallel processing and streaming results."""
+    
+    # This prevents "I/O operation on closed file" error
     temp_filename = f"temp_{uuid.uuid4()}_{file.filename}"
+    
+    try:
+        # Read the entire file into memory first
+        file_contents = await file.read()
+        
+        # Save to disk immediately
+        with open(temp_filename, "wb") as buffer:
+            buffer.write(file_contents)
+        
+        print(f"✅ File saved: {temp_filename} ({len(file_contents)} bytes)")
+        
+    except Exception as e:
+        print(f"❌ Error saving file: {e}")
+        return StreamingResponse(
+            iter([f"data: {json.dumps({'type': 'log', 'content': f'❌ File upload error: {str(e)}'})}\n\n"]),
+            media_type="text/event-stream"
+        )
 
+    # Now create the async generator with the saved file
     async def file_processor_stream():
         result_queue = Queue()
         
         try:
-            with open(temp_filename, "wb") as buffer:
-                buffer.write(await file.read())
-
+            # File is already saved, now process it
             provider_list = []
             
             if file.filename.endswith('.csv'):
@@ -192,18 +216,38 @@ async def validate_file(file: UploadFile = File(...)):
             
             elif file.filename.endswith('.pdf'):
                 yield f"data: {json.dumps({'type': 'log', 'content': '🔍 Parsing PDF with Vision AI...'})}\n\n"
-                provider_list = parse_provider_pdf(temp_filename)
-                if provider_list and isinstance(provider_list[0], dict) and provider_list[0].get("error"):
-                    error_msg = provider_list[0]["error"]
-                    yield f"data: {json.dumps({'type': 'log', 'content': f'❌ PDF Error: {error_msg}'})}\n\n"
+                
+                # Add detailed error catching here
+                try:
+                    provider_list = parse_provider_pdf(temp_filename)
+                    
+                    # Check if extraction returned an error
+                    if provider_list and isinstance(provider_list[0], dict) and provider_list[0].get("error"):
+                        error_msg = provider_list[0]["error"]
+                        yield f"data: {json.dumps({'type': 'log', 'content': f'❌ PDF Extraction Error: {error_msg}'})}\n\n"
+                        provider_list = []
+                    else:
+                        yield f"data: {json.dumps({'type': 'log', 'content': f'✅ Extracted {len(provider_list)} providers from PDF'})}\n\n"
+                        
+                except Exception as pdf_error:
+                    error_details = f"{type(pdf_error).__name__}: {str(pdf_error)}"
+                    yield f"data: {json.dumps({'type': 'log', 'content': f'❌ PDF Processing Failed: {error_details}'})}\n\n"
+                    
+                    # Send more detailed error info
+                    import traceback
+                    tb = traceback.format_exc()
+                    print(f"PDF Extraction Error:\n{tb}")
+                    
+                    yield f"data: {json.dumps({'type': 'log', 'content': f'💡 Check console for detailed error trace'})}\n\n"
                     provider_list = []
+                    
             else:
-                yield f"data: {json.dumps({'type': 'log', 'content': '❌ Unsupported file format'})}\n\n"
+                yield f"data: {json.dumps({'type': 'log', 'content': '❌ Unsupported file format. Use CSV or PDF.'})}\n\n"
                 return
 
             total_records = len(provider_list)
             if total_records == 0:
-                yield f"data: {json.dumps({'type': 'log', 'content': '❌ No records found in file'})}\n\n"
+                yield f"data: {json.dumps({'type': 'log', 'content': '❌ No provider records found in file'})}\n\n"
                 return
                 
             yield f"data: {json.dumps({'type': 'log', 'content': f'🚀 Found {total_records} records. Processing...'})}\n\n"
@@ -311,11 +355,13 @@ async def validate_file(file: UploadFile = File(...)):
             traceback.print_exc()
             yield f"data: {json.dumps({'type': 'log', 'content': error_msg})}\n\n"
         finally:
+            # Clean up temp file
             if os.path.exists(temp_filename):
                 try:
                     os.remove(temp_filename)
+                    print(f"🗑️ Cleaned up: {temp_filename}")
                 except Exception as e:
-                    print(f"Warning: Could not remove temp file: {e}")
+                    print(f"⚠️ Could not remove temp file: {e}")
             yield f"data: {json.dumps({'type': 'close', 'content': 'Stream closed.'})}\n\n"
 
     return StreamingResponse(file_processor_stream(), media_type="text/event-stream")
